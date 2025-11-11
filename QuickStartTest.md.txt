@@ -1,0 +1,3 @@
+python tool.py data.json validate
+python tool.py data.json dump-csv --system Biosphere_NPP_diurnal_eta0p01 --out diurnal_biosphere.csv
+python tool.py data.json notch-summary --out notch_delta_summary.csv --Tsink 255 --Pon_baseline_12h 2.6618540345721604e14 --Pon_winter_9h 3.5491387127628805e14 --Pon_summer_15h 2.1294832276577283e14 --hours_removed 2
