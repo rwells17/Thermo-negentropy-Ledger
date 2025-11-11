@@ -1,0 +1,117 @@
+WELLS THERMODYNAMIC BUDGET LICENSE v1.0 (WTBL-1.0)
+
+Copyright (c) 2025 Ryan Wells
+
+All rights reserved, except as expressly granted below.
+
+----------------------------------------------------------------------
+1. DEFINITIONS
+----------------------------------------------------------------------
+
+"Software" means the Python code, JSON data files, documentation, and
+any other files included in this repository, unless a file explicitly
+states a different license.
+
+"Non-Commercial Use" means use that is not primarily intended for or
+directed toward commercial advantage or monetary compensation.
+
+"Commercial Use" means any use of the Software in a product, service,
+or workflow that is sold, licensed, monetized, or used internally by a
+for-profit entity in support of revenue-generating activities.
+
+----------------------------------------------------------------------
+2. GRANT OF RIGHTS FOR NON-COMMERCIAL USE
+----------------------------------------------------------------------
+
+Subject to the terms of this License, you are hereby granted a
+worldwide, royalty-free, non-exclusive, non-transferable license to:
+
+  (a) Use the Software for personal, academic, educational, or
+      non-profit research purposes.
+
+  (b) Modify the Software and create derivative works.
+
+  (c) Reproduce and distribute unmodified or modified copies of the
+      Software, in whole or in part, for Non-Commercial Use.
+
+  (d) Publish analyses, results, visualizations, or academic papers
+      that are based on or generated using the Software.
+
+----------------------------------------------------------------------
+3. ATTRIBUTION REQUIREMENTS
+----------------------------------------------------------------------
+
+Any distribution, modification, or published work (including papers,
+blog posts, reports, or visualizations) that uses the Software or
+derivative works MUST include:
+
+  (a) The following attribution text, or an equivalent clearly visible
+      credit:
+
+      "Thermodynamic Negentropy Budget Toolkit — Ryan Wells"
+
+  (b) A reference or hyperlink to the original repository, if feasible
+      (for example, in a REFERENCES, ACKNOWLEDGEMENTS, or README
+      section).
+
+  (c) Preservation of this License text in any redistributed source
+      or binary form that includes substantial portions of the
+      Software.
+
+----------------------------------------------------------------------
+4. COMMERCIAL USE
+----------------------------------------------------------------------
+
+Commercial Use of the Software, in whole or in part, is NOT permitted
+under this License without prior written permission from the copyright
+holder, Ryan Wells.
+
+Examples of Commercial Use include, but are not limited to:
+
+  - Integrating the Software into a commercial product or SaaS
+    offering.
+  - Using the Software in a for-profit consulting workflow or paid
+    service.
+  - Deploying the Software as part of internal tooling that materially
+    supports revenue-generating activities.
+
+To obtain a commercial license, you must contact the copyright holder
+and negotiate separate terms.
+
+----------------------------------------------------------------------
+5. NO WARRANTY
+----------------------------------------------------------------------
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+----------------------------------------------------------------------
+6. TERMINATION
+----------------------------------------------------------------------
+
+This License and the rights granted herein shall automatically
+terminate if you violate any of its terms.
+
+Upon termination, you must cease all use, distribution, and
+modification of the Software, except that published academic works,
+reports, and analyses that were lawfully created prior to termination
+may continue to be distributed as-is.
+
+The copyright holder may, at their sole discretion, reinstate rights
+under this License if the violation is cured.
+
+----------------------------------------------------------------------
+7. MISCELLANEOUS
+----------------------------------------------------------------------
+
+Nothing in this License shall be interpreted as limiting fair use or
+other rights granted under applicable copyright law.
+
+If any provision of this License is held unenforceable, the remaining
+provisions shall remain in full force and effect.
