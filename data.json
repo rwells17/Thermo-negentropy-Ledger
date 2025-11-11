@@ -1,0 +1,1254 @@
+{
+  "meta": {
+    "schema_version": "1.5-hardened",
+    "generated_utc": "2025-11-10T00:00:00Z",
+    "author": "Ryan Wells",
+    "t_s": 31557600,
+    "constants": {
+      "k_B_J_per_K": 1.380649e-23,
+      "ln2": 0.6931471805599453,
+      "kBln2_J_per_K": 9.569914267e-24,
+      "bits_per_J_per_K": 1.0442737824274138e+23
+    },
+    "docstring": [
+      "Carrier-aware entropy budget: Ndot = Σ_i P_i * (1/T_sink_i − α_i/T_source_i).",
+      "Exergy per leg (W_ex_i): work/electric/chemical ideal: P_i; heat: P_i*(1 − T_sink/T_source); blackbody radiation: Petela; spectral radiation: W_ex = P − T_sink*Ṡ.",
+      "Landauer (tight): bits/s_ideal ≤ Σ_i W_ex_i / (k_B T_erase_i ln 2). T_erase_i is optional and can differ from T_sink_i.",
+      "Usable bits: bits/s_usable = Σ_i η_use_i * W_ex_i / (k_B T_erase_i ln 2), with 0 ≤ η_use_i ≤ 1.",
+      "Sum-then-clamp: time integration uses clamp([Σ_i Ndot_i]_+, 0) per timestep.",
+      "Exergy destruction: D = Σ W_ex^in − Σ W_ex^out − W_useful ≥ 0.",
+      "Negative-bracket diagnostics: record Ndot_raw before clamp; flag when negative."
+    ],
+    "carriers": {
+      "work|electric|mechanical": {
+        "alpha_default": 0.0,
+        "exergy_model": "W_ex = P (ideal bound)"
+      },
+      "chemical": {
+        "alpha_default": 0.0,
+        "exergy_model": "W_ex = P (ideal bound); can use environment+reaction for Gibbs availability"
+      },
+      "heat": {
+        "alpha_default": 1.0,
+        "exergy_model": "W_ex = P * (1 − T_sink/T_source)"
+      },
+      "radiation_bb": {
+        "alpha_default": 1.3333333333333333,
+        "exergy_model": "Petela: W_ex = P * [1 − (4/3) r + (1/3) r^4], r=T_sink/T_source"
+      },
+      "radiation_spectral": {
+        "alpha_default": 1.3333333333333333,
+        "guardrails": {
+          "alpha_eff_range": [
+            0.0,
+            1.3333333333333333
+          ],
+          "consistency": "If alpha_eff and spectral both supplied, compute both and assert agreement within tolerance."
+        },
+        "exergy_model": "General: W_ex = P − T_sink * Ṡ (Ṡ from provided spectrum or alpha_eff)"
+      }
+    },
+    "time_model": {
+      "steady": "All values constant over t_s (year).",
+      "time_series": {
+        "definition": "J_new = ∫_0^Δt [Σ_i P_i(t)(1/T_sink_i(t) − α_i/T_source_i(t))]_+ dt",
+        "quadrature_default": "left_riemann",
+        "clamp_order": "sum_then_clamp"
+      }
+    },
+    "validation_invariants": {
+      "monotonicity": [
+        "Lower T_sink → higher Ndot and Landauer bits (others fixed)",
+        "Higher α → lower Ndot (others fixed)"
+      ],
+      "identities": [
+        "Work/Electric/Chemical ideal (α=0, η=1): T_sink*Ndot = W_ex",
+        "BB radiation: T_sink*Ndot = P*(1 − (4/3)r); W_ex = P*(1 − (4/3)r + (1/3)r^4); gap = (1/3)P r^4 ≥ 0"
+      ],
+      "nulls_rule": "T_source_K may be null iff α=0"
+    },
+    "radiation_realism": {
+      "inputs.radiation_capture.optional": [
+        "albedo (0..1)",
+        "view_factor (0..1)",
+        "PAR_band_nm: [λ_min, λ_max]",
+        "band_power_fraction (optional)",
+        "petela_band_factor (optional)"
+      ],
+      "effective_exergy": "W_ex_in_effective = P * (1 − albedo) * view_factor * petela_factor * band_power_fraction"
+    },
+    "numerics": {
+      "dtype_min": "float64",
+      "high_precision": false
+    },
+    "units": {
+      "P_W": "W",
+      "T_source_K": "K or null if α=0",
+      "T_sink_K": "K",
+      "T_erase_K": "K",
+      "alpha": "dimensionless",
+      "eta_use": "0..1",
+      "Ndot_leg_J_per_K_s": "J/K/s",
+      "J_new_J_per_K": "J/K over t_s",
+      "W_ex_leg_W": "W",
+      "W_exergy_max_W": "W",
+      "bits_per_s": "bits/s",
+      "bits_per_year": "bits/year",
+      "phi_Jinv": "1/K"
+    },
+    "interpretation_guardrails": [
+      "Biosphere bits reflect available negentropy budgets, not ‘biological compute’.",
+      "AI usable bits are upper bounds; η_use is topology-limited and often ≪ 1."
+    ]
+  },
+  "real_systems": {
+    "Sun": {
+      "P_input_W": null,
+      "carrier_legs": [
+        {
+          "leg_id": "L1",
+          "carrier": "radiation_bb",
+          "P_W": 3.828e+26,
+          "alpha": 1.3333333333333333,
+          "T_source_K": 5772.0,
+          "T_sink_K": 2.725,
+          "T_erase_K": 2.725,
+          "sink_label": "space_2p725K",
+          "eta_use": 1.0,
+          "phi_Jinv_leg": 0.3667416,
+          "Ndot_leg_J_per_K_s": 1.4038863733175658e+26,
+          "W_ex_leg_W": 3.8256e+26,
+          "bits_per_s_landauer_sink_leg": 1.466e+49,
+          "bits_per_s_landauer_erase_leg": 1.466e+49
+        }
+      ],
+      "totals": {
+        "Ndot_J_per_K_s": 1.4038863733175658e+26,
+        "J_new_J_per_K": 4.4302374896236506e+33,
+        "W_exergy_max_W": 3.8256e+26,
+        "bits_per_s_landauer_erase": 1.466e+49,
+        "bits_per_year_landauer_erase": 4.632e+56,
+        "bits_per_s_entropy": 1.466e+49
+      },
+      "validation": {
+        "power_conservation_scope": "not_declared"
+      },
+      "time_model": "steady"
+    },
+    "Neutron_Star_RXJ1856": {
+      "P_input_W": null,
+      "carrier_legs": [
+        {
+          "leg_id": "L1",
+          "carrier": "radiation_bb",
+          "P_W": 7.040334044675004e+24,
+          "alpha": 1.3333333333333333,
+          "T_source_K": 430000.0,
+          "T_sink_K": 2.725,
+          "T_erase_K": 2.725,
+          "sink_label": "space_2p725K",
+          "eta_use": 1.0,
+          "phi_Jinv_leg": 0.3669714,
+          "Ndot_leg_J_per_K_s": 2.5835869932407847e+24,
+          "W_ex_leg_W": 7.0403e+24,
+          "bits_per_s_landauer_sink_leg": 2.699e+47,
+          "bits_per_s_landauer_erase_leg": 2.699e+47
+        }
+      ],
+      "totals": {
+        "Ndot_J_per_K_s": 2.5835869932407847e+24,
+        "J_new_J_per_K": 8.153013073352376e+31,
+        "W_exergy_max_W": 7.0403e+24,
+        "bits_per_s_landauer_erase": 2.699e+47,
+        "bits_per_year_landauer_erase": 8.516e+54,
+        "bits_per_s_entropy": 2.699e+47
+      },
+      "validation": {
+        "power_conservation_scope": "not_declared"
+      },
+      "time_model": "steady"
+    },
+    "Nuclear_Plant_PaloVerde_elec_only": {
+      "P_input_W": 3.650542675984677e+09,
+      "carrier_legs": [
+        {
+          "leg_id": "L1",
+          "carrier": "electricity",
+          "P_W": 3.650542675984677e+09,
+          "alpha": 0.0,
+          "T_source_K": null,
+          "T_sink_K": 300.0,
+          "T_erase_K": 330.0,
+          "erasure_candidate": true,
+          "sink_label": "ambient_air_300K",
+          "eta_use": 1.0,
+          "phi_Jinv_leg": 0.0033333333333333335,
+          "Ndot_leg_J_per_K_s": 1.216847558661559e+07,
+          "W_ex_leg_W": 3.650542675984677e+09,
+          "bits_per_s_landauer_sink_leg": 1.271e+30,
+          "bits_per_s_landauer_erase_leg": 1.156e+30
+        }
+      ],
+      "totals": {
+        "Ndot_J_per_K_s": 1.216847558661559e+07,
+        "J_new_J_per_K": 3.8400788517218017e+14,
+        "W_exergy_max_W": 3.650542675984677e+09,
+        "bits_per_s_landauer_erase": 1.156e+30,
+        "bits_per_year_landauer_erase": 3.64e+37,
+        "bits_per_s_entropy": 1.271e+30
+      },
+      "exergy_ledger": {
+        "W_ex_in_total_W": 3.650542675984677e+09,
+        "W_ex_out_total_W": 0.0,
+        "W_useful_W": 0.0,
+        "D_W": 3.650542675984677e+09,
+        "D_nonnegative": true
+      },
+      "validation": {
+        "power_conservation_scope": "ok",
+        "power_conservation_ok": true,
+        "work_elec_identity_ok": true
+      },
+      "time_model": "steady"
+    },
+    "AI_Cluster_1MW": {
+      "P_input_W": 1000000.0,
+      "carrier_legs": [
+        {
+          "leg_id": "L1",
+          "carrier": "electricity",
+          "P_W": 1000000.0,
+          "alpha": 0.0,
+          "T_source_K": null,
+          "T_sink_K": 300.0,
+          "T_erase_K": 350.0,
+          "erasure_candidate": true,
+          "sink_label": "ambient_air_300K",
+          "eta_use": 0.001,
+          "phi_Jinv_leg": 0.0033333333333333335,
+          "Ndot_leg_J_per_K_s": 3333.3333333333335,
+          "W_ex_leg_W": 1000000.0,
+          "bits_per_s_landauer_sink_leg": 3.481e+26,
+          "bits_per_s_landauer_erase_leg": 2.986e+26,
+          "bits_per_s_usable_leg": 2.986e+23
+        }
+      ],
+      "totals": {
+        "Ndot_J_per_K_s": 3333.3333333333335,
+        "J_new_J_per_K": 1.05192e+11,
+        "W_exergy_max_W": 1000000.0,
+        "bits_per_s_landauer_erase": 2.986e+26,
+        "bits_per_year_landauer_erase": 9.42e+33,
+        "bits_per_s_usable": 2.986e+23,
+        "bits_per_year_usable": 9.42e+30,
+        "bits_per_s_entropy": 3.481e+26
+      },
+      "exergy_ledger": {
+        "W_ex_in_total_W": 1000000.0,
+        "W_ex_out_total_W": 0.0,
+        "W_useful_W": 0.0,
+        "D_W": 1000000.0,
+        "D_nonnegative": true
+      },
+      "validation": {
+        "power_conservation_scope": "ok",
+        "power_conservation_ok": true,
+        "work_elec_identity_ok": true
+      },
+      "time_model": "steady"
+    },
+    "DataCenter_1MW_mixed_demo": {
+      "P_input_W": 1000000.0,
+      "carrier_legs": [
+        {
+          "leg_id": "L1-work-to-heat",
+          "carrier": "work",
+          "P_W": 900000.0,
+          "alpha": 0.0,
+          "T_source_K": null,
+          "T_sink_K": 300.0,
+          "T_erase_K": 360.0,
+          "erasure_candidate": true,
+          "sink_label": "ambient_air_300K",
+          "eta_use": 0.003,
+          "phi_Jinv_leg": 0.0033333333333333335,
+          "Ndot_leg_J_per_K_s": 3000.0,
+          "W_ex_leg_W": 900000.0,
+          "bits_per_s_landauer_sink_leg": 3.135e+26,
+          "bits_per_s_landauer_erase_leg": 2.613e+26,
+          "bits_per_s_usable_leg": 7.839e+23
+        },
+        {
+          "leg_id": "L2-laser-to-space",
+          "carrier": "radiation_spectral",
+          "P_W": 100000.0,
+          "alpha_eff": 0.01,
+          "T_source_K": 1000000.0,
+          "T_sink_K": 2.725,
+          "T_erase_K": 300.0,
+          "erasure_candidate": false,
+          "sink_label": "space_2p725K",
+          "eta_use": 0.0,
+          "phi_Jinv_leg": 0.366962,
+          "Ndot_leg_J_per_K_s": 36630.0,
+          "W_ex_leg_W": 99999.9973,
+          "bits_per_s_landauer_sink_leg": 3.833e+27
+        }
+      ],
+      "totals": {
+        "Ndot_J_per_K_s": 39630.0,
+        "J_new_J_per_K": 1250000000000.0,
+        "W_exergy_max_W": 999999.973,
+        "bits_per_s_landauer_erase": 2.613e+26,
+        "bits_per_year_landauer_erase": 8.247e+33,
+        "bits_per_s_usable": 7.839e+23,
+        "bits_per_year_usable": 2.472e+31,
+        "bits_per_s_entropy": 4.138e+27
+      },
+      "exergy_ledger": {
+        "direction_convention": "L1=in, L2=out",
+        "W_ex_in_total_W": 1000000.0,
+        "W_ex_out_total_W": 100000.0,
+        "W_useful_W": 0.0,
+        "D_W": 900000.0,
+        "D_nonnegative": true
+      },
+      "validation": {
+        "power_conservation_scope": "ok",
+        "power_conservation_ok": true
+      },
+      "time_model": "steady"
+    },
+    "Biosphere_NPP": {
+      "P_input_W": 1.3309270172860802e+16,
+      "inputs": {
+        "radiation_capture": {
+          "carrier": "radiation_bb",
+          "P_W": 1.3309270172860802e+16,
+          "T_source_K": 5772.0,
+          "T_sink_K": 255.0,
+          "eta_photo_energy_assumed": 0.01,
+          "albedo": 0.2,
+          "view_factor": 0.9,
+          "PAR_band_nm": [
+            400,
+            700
+          ],
+          "band_power_fraction": 0.43,
+          "petela_factor": 0.94106,
+          "W_exergy_petela_effective_W": 3.88e+15,
+          "note": "Captured solar power for photosynthesis at 1% energy efficiency; exergy adjusted by albedo, view, and PAR band."
+        }
+      },
+      "carrier_legs": [
+        {
+          "leg_id": "L1-chemical-NPP",
+          "carrier": "chemical",
+          "P_W": 1.3309270172860802e+14,
+          "alpha": 0.0,
+          "T_source_K": null,
+          "T_sink_K": 255.0,
+          "T_erase_K": 255.0,
+          "erasure_candidate": true,
+          "sink_label": "biosphere_255K",
+          "eta_use": 1.0,
+          "phi_Jinv_leg": 0.00392156862745098,
+          "Ndot_leg_J_per_K_s": 5.219321636416e+11,
+          "W_ex_leg_W": 1.3309270172860802e+14,
+          "bits_per_s_landauer_sink_leg": 5.452e+34,
+          "bits_per_s_landauer_erase_leg": 5.452e+34
+        },
+        {
+          "leg_id": "L2-thermalization-loss",
+          "carrier": "heat",
+          "P_W": 1.3176177471132194e+16,
+          "alpha": 1.0,
+          "T_source_K": 255.0,
+          "T_sink_K": 255.0,
+          "T_erase_K": 255.0,
+          "erasure_candidate": false,
+          "sink_label": "biosphere_255K",
+          "eta_use": 0.0,
+          "Ndot_leg_J_per_K_s": 0.0,
+          "W_ex_leg_W": 0.0
+        }
+      ],
+      "totals": {
+        "Ndot_J_per_K_s": 5.219321636416e+11,
+        "J_new_J_per_K": 1.6470926447336156e+19,
+        "W_exergy_max_W": 1.3309270172860802e+14,
+        "bits_per_s_landauer_erase": 5.452e+34,
+        "bits_per_year_landauer_erase": 1.721e+42,
+        "bits_per_s_entropy": 5.452e+34
+      },
+      "exergy_ledger": {
+        "W_ex_in_total_W": 3.88e+15,
+        "W_ex_out_total_W": 1.3309270172860802e+14,
+        "W_useful_W": 0.0,
+        "D_W": 3.746907298271392e+15,
+        "D_nonnegative": true
+      },
+      "validation": {
+        "power_conservation_scope": "ok",
+        "power_conservation_ok": true
+      },
+      "time_model": "steady"
+    },
+    "Biosphere_NPP_diurnal_eta0p01": {
+      "P_input_W": 1.3309270172860802e+16,
+      "inputs": {
+        "radiation_capture": {
+          "carrier": "radiation_bb",
+          "T_source_K": 5772.0,
+          "T_sink_K": 255.0,
+          "eta_photo_energy_assumed": 0.01,
+          "petela_factor": 0.94106,
+          "time_series": {
+            "dt_s": 3600,
+            "P_W_series": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2.6618540345721604e+16,
+              2.6618540345721604e+16,
+              2.6618540345721604e+16,
+              2.6618540345721604e+16,
+              2.6618540345721604e+16,
+              2.6618540345721604e+16,
+              2.6618540345721604e+16,
+              2.6618540345721604e+16,
+              2.6618540345721604e+16,
+              2.6618540345721604e+16,
+              2.6618540345721604e+16,
+              2.6618540345721604e+16,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "note": "12h rectangle; average equals P_input_W"
+          }
+        }
+      },
+      "carrier_legs": [
+        {
+          "leg_id": "L1-chemical-NPP",
+          "carrier": "chemical",
+          "P_W": 1.3309270172860802e+14,
+          "alpha": 0.0,
+          "T_source_K": null,
+          "T_sink_K": 255.0,
+          "T_erase_K": 255.0,
+          "erasure_candidate": true,
+          "sink_label": "biosphere_255K",
+          "eta_use": 1.0,
+          "Ndot_leg_J_per_K_s": 5.219321636416e+11,
+          "W_ex_leg_W": 1.3309270172860802e+14,
+          "time_series": {
+            "dt_s": 3600,
+            "P_W_series": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2.6618540345721604e+14,
+              2.6618540345721604e+14,
+              2.6618540345721604e+14,
+              2.6618540345721604e+14,
+              2.6618540345721604e+14,
+              2.6618540345721604e+14,
+              2.6618540345721604e+14,
+              2.6618540345721604e+14,
+              2.6618540345721604e+14,
+              2.6618540345721604e+14,
+              2.6618540345721604e+14,
+              2.6618540345721604e+14,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "leg_id": "L2-thermalization-loss",
+          "carrier": "heat",
+          "P_W": 1.3176177471132194e+16,
+          "alpha": 1.0,
+          "T_source_K": 255.0,
+          "T_sink_K": 255.0,
+          "sink_label": "biosphere_255K",
+          "eta_use": 0.0,
+          "Ndot_leg_J_per_K_s": 0.0,
+          "W_ex_leg_W": 0.0,
+          "time_series": {
+            "dt_s": 3600,
+            "P_W_series": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2.6352354942264387e+16,
+              2.6352354942264387e+16,
+              2.6352354942264387e+16,
+              2.6352354942264387e+16,
+              2.6352354942264387e+16,
+              2.6352354942264387e+16,
+              2.6352354942264387e+16,
+              2.6352354942264387e+16,
+              2.6352354942264387e+16,
+              2.6352354942264387e+16,
+              2.6352354942264387e+16,
+              2.6352354942264387e+16,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      ],
+      "totals": {
+        "Ndot_J_per_K_s": 5.219321636416e+11,
+        "J_new_J_per_K": 1.6470926447336156e+19,
+        "W_exergy_max_W": 1.3309270172860802e+14
+      },
+      "time_series": {
+        "dt_s": 3600,
+        "steps": 24,
+        "quadrature": "left_riemann",
+        "clamp_order": "sum_then_clamp",
+        "series_duration_s": 86400,
+        "Ndot_raw_avg_J_per_K_s": 5.219321636416e+11,
+        "J_new_over_series_J_per_K": 4.509493893863424e+16,
+        "bits_per_day_entropy": 4.71e+39,
+        "bits_per_day_landauer_erase": 4.71e+39
+      },
+      "exergy_ledger": {
+        "W_ex_in_total_W": 1.252e+16,
+        "W_ex_out_total_W": 1.3309270172860802e+14,
+        "W_useful_W": 0.0,
+        "D_W": 1.238690729e+16,
+        "D_nonnegative": true
+      },
+      "validation": {
+        "power_conservation_scope": "ok",
+        "power_conservation_ok": true,
+        "power_conservation_ok_per_timestep": true
+      },
+      "time_model": "time_series"
+    },
+    "Biosphere_NPP_winter_eta0p01": {
+      "P_input_W": 1.3309270172860802e+16,
+      "inputs": {
+        "radiation_capture": {
+          "carrier": "radiation_bb",
+          "T_source_K": 5772.0,
+          "T_sink_K": 255.0,
+          "eta_photo_energy_assumed": 0.01,
+          "petela_factor": 0.94106,
+          "time_series": {
+            "dt_s": 3600,
+            "P_W_series": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              3.5491387127628805e+16,
+              3.5491387127628805e+16,
+              3.5491387127628805e+16,
+              3.5491387127628805e+16,
+              3.5491387127628805e+16,
+              3.5491387127628805e+16,
+              3.5491387127628805e+16,
+              3.5491387127628805e+16,
+              3.5491387127628805e+16,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      "carrier_legs": [
+        {
+          "leg_id": "L1-chemical-NPP",
+          "carrier": "chemical",
+          "P_W": 1.3309270172860802e+14,
+          "alpha": 0.0,
+          "T_source_K": null,
+          "T_sink_K": 255.0,
+          "T_erase_K": 255.0,
+          "erasure_candidate": true,
+          "sink_label": "biosphere_255K",
+          "eta_use": 1.0,
+          "Ndot_leg_J_per_K_s": 5.219321636416e+11,
+          "W_ex_leg_W": 1.3309270172860802e+14,
+          "time_series": {
+            "dt_s": 3600,
+            "P_W_series": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              3.5491387127628805e+14,
+              3.5491387127628805e+14,
+              3.5491387127628805e+14,
+              3.5491387127628805e+14,
+              3.5491387127628805e+14,
+              3.5491387127628805e+14,
+              3.5491387127628805e+14,
+              3.5491387127628805e+14,
+              3.5491387127628805e+14,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "leg_id": "L2-thermalization-loss",
+          "carrier": "heat",
+          "P_W": 1.3176177471132194e+16,
+          "alpha": 1.0,
+          "T_source_K": 255.0,
+          "T_sink_K": 255.0,
+          "sink_label": "biosphere_255K",
+          "eta_use": 0.0,
+          "Ndot_leg_J_per_K_s": 0.0,
+          "W_ex_leg_W": 0.0,
+          "time_series": {
+            "dt_s": 3600,
+            "P_W_series": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              3.5136473256352516e+16,
+              3.5136473256352516e+16,
+              3.5136473256352516e+16,
+              3.5136473256352516e+16,
+              3.5136473256352516e+16,
+              3.5136473256352516e+16,
+              3.5136473256352516e+16,
+              3.5136473256352516e+16,
+              3.5136473256352516e+16,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      ],
+      "totals": {
+        "Ndot_J_per_K_s": 5.219321636416e+11,
+        "J_new_J_per_K": 1.6470926447336156e+19,
+        "W_exergy_max_W": 1.3309270172860802e+14,
+        "bits_per_s_landauer_erase": 5.452e+34,
+        "bits_per_year_landauer_erase": 1.721e+42,
+        "bits_per_s_entropy": 5.452e+34
+      },
+      "time_series": {
+        "dt_s": 3600,
+        "steps": 24,
+        "quadrature": "left_riemann",
+        "clamp_order": "sum_then_clamp",
+        "J_new_over_series_J_per_K": 4.509493893863424e+16,
+        "bits_per_day_entropy": 4.71e+39,
+        "bits_per_day_landauer_erase": 4.71e+39
+      },
+      "validation": {
+        "power_conservation_scope": "ok",
+        "power_conservation_ok": true
+      },
+      "time_model": "time_series"
+    },
+    "Biosphere_NPP_summer_eta0p01": {
+      "P_input_W": 1.3309270172860802e+16,
+      "inputs": {
+        "radiation_capture": {
+          "carrier": "radiation_bb",
+          "T_source_K": 5772.0,
+          "T_sink_K": 255.0,
+          "eta_photo_energy_assumed": 0.01,
+          "petela_factor": 0.94106,
+          "time_series": {
+            "dt_s": 3600,
+            "P_W_series": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      },
+      "carrier_legs": [
+        {
+          "leg_id": "L1-chemical-NPP",
+          "carrier": "chemical",
+          "P_W": 1.3309270172860802e+14,
+          "alpha": 0.0,
+          "T_source_K": null,
+          "T_sink_K": 255.0,
+          "T_erase_K": 255.0,
+          "erasure_candidate": true,
+          "sink_label": "biosphere_255K",
+          "eta_use": 1.0,
+          "Ndot_leg_J_per_K_s": 5.219321636416e+11,
+          "W_ex_leg_W": 1.3309270172860802e+14,
+          "time_series": {
+            "dt_s": 3600,
+            "P_W_series": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              0,
+              0,
+              0
+            ]
+          }
+        },
+        {
+          "leg_id": "L2-thermalization-loss",
+          "carrier": "heat",
+          "P_W": 1.3176177471132194e+16,
+          "alpha": 1.0,
+          "T_source_K": 255.0,
+          "T_sink_K": 255.0,
+          "sink_label": "biosphere_255K",
+          "eta_use": 0.0,
+          "Ndot_leg_J_per_K_s": 0.0,
+          "W_ex_leg_W": 0.0,
+          "time_series": {
+            "dt_s": 3600,
+            "P_W_series": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2.108188395381151e+16,
+              2.108188395381151e+16,
+              2.108188395381151e+16,
+              2.108188395381151e+16,
+              2.108188395381151e+16,
+              2.108188395381151e+16,
+              2.108188395381151e+16,
+              2.108188395381151e+16,
+              2.108188395381151e+16,
+              2.108188395381151e+16,
+              2.108188395381151e+16,
+              2.108188395381151e+16,
+              2.108188395381151e+16,
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      ],
+      "totals": {
+        "Ndot_J_per_K_s": 5.219321636416e+11,
+        "J_new_J_per_K": 1.6470926447336156e+19,
+        "W_exergy_max_W": 1.3309270172860802e+14,
+        "bits_per_s_landauer_erase": 5.452e+34,
+        "bits_per_year_landauer_erase": 1.721e+42,
+        "bits_per_s_entropy": 5.452e+34
+      },
+      "time_series": {
+        "dt_s": 3600,
+        "steps": 24,
+        "quadrature": "left_riemann",
+        "clamp_order": "sum_then_clamp",
+        "J_new_over_series_J_per_K": 4.509493893863424e+16,
+        "bits_per_day_entropy": 4.71e+39,
+        "bits_per_day_landauer_erase": 4.71e+39
+      },
+      "validation": {
+        "power_conservation_scope": "ok",
+        "power_conservation_ok": true
+      },
+      "time_model": "time_series"
+    },
+    "Biosphere_NPP_winter_notch_eta0p01": {
+      "P_input_W": null,
+      "inputs": {
+        "radiation_capture": {
+          "carrier": "radiation_bb",
+          "T_source_K": 5772.0,
+          "T_sink_K": 255.0,
+          "eta_photo_energy_assumed": 0.01,
+          "petela_factor": 0.94106,
+          "time_series": {
+            "dt_s": 3600,
+            "P_W_series": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              3.5491387127628805e+16,
+              3.5491387127628805e+16,
+              3.5491387127628805e+16,
+              3.5491387127628805e+16,
+              0,
+              0,
+              3.5491387127628805e+16,
+              3.5491387127628805e+16,
+              3.5491387127628805e+16,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ],
+            "note": "2-hour notch in a 9h day at 4/3 height"
+          }
+        }
+      },
+      "carrier_legs": [
+        {
+          "leg_id": "L1-chemical-NPP",
+          "carrier": "chemical",
+          "P_W": 1.3309270172860802e+14,
+          "alpha": 0.0,
+          "T_source_K": null,
+          "T_sink_K": 255.0,
+          "T_erase_K": 255.0,
+          "erasure_candidate": true,
+          "sink_label": "biosphere_255K",
+          "eta_use": 1.0,
+          "Ndot_leg_J_per_K_s": 5.219321636416e+11,
+          "W_ex_leg_W": 1.3309270172860802e+14,
+          "time_series": {
+            "dt_s": 3600,
+            "P_W_series": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              3.5491387127628805e+14,
+              3.5491387127628805e+14,
+              3.5491387127628805e+14,
+              3.5491387127628805e+14,
+              0,
+              0,
+              3.5491387127628805e+14,
+              3.5491387127628805e+14,
+              3.5491387127628805e+14,
+              0,
+              0,
+              0,
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      ],
+      "totals": {
+        "Ndot_J_per_K_s": 5.219321636416e+11,
+        "J_new_J_per_K": 1.6470926447336156e+19,
+        "W_exergy_max_W": 1.3309270172860802e+14,
+        "bits_per_s_landauer_erase": 5.452e+34,
+        "bits_per_year_landauer_erase": 1.721e+42,
+        "bits_per_s_entropy": 5.452e+34
+      },
+      "time_series": {
+        "dt_s": 3600,
+        "steps": 24,
+        "quadrature": "left_riemann",
+        "clamp_order": "sum_then_clamp",
+        "J_new_over_series_J_per_K": 3.508e+16,
+        "delta_vs_clean_winter": {
+          "Delta_J_new_J_per_K": 1.002e+16,
+          "Delta_bits": 1.046e+39
+        }
+      },
+      "validation": {
+        "power_conservation_scope": "not_declared"
+      },
+      "time_model": "time_series"
+    },
+    "Biosphere_NPP_summer_notch_eta0p01": {
+      "P_input_W": null,
+      "inputs": {
+        "radiation_capture": {
+          "carrier": "radiation_bb",
+          "T_source_K": 5772.0,
+          "T_sink_K": 255.0,
+          "eta_photo_energy_assumed": 0.01,
+          "petela_factor": 0.94106,
+          "time_series": {
+            "dt_s": 3600,
+            "P_W_series": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              0,
+              0,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              2.1294832276577283e+16,
+              0,
+              0,
+              0
+            ],
+            "note": "2-hour notch in a 15h day at 0.8 height"
+          }
+        }
+      },
+      "carrier_legs": [
+        {
+          "leg_id": "L1-chemical-NPP",
+          "carrier": "chemical",
+          "P_W": 1.3309270172860802e+14,
+          "alpha": 0.0,
+          "T_source_K": null,
+          "T_sink_K": 255.0,
+          "T_erase_K": 255.0,
+          "erasure_candidate": true,
+          "sink_label": "biosphere_255K",
+          "eta_use": 1.0,
+          "Ndot_leg_J_per_K_s": 5.219321636416e+11,
+          "W_ex_leg_W": 1.3309270172860802e+14,
+          "time_series": {
+            "dt_s": 3600,
+            "P_W_series": [
+              0,
+              0,
+              0,
+              0,
+              0,
+              0,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              0,
+              0,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              2.1294832276577283e+14,
+              0,
+              0,
+              0
+            ]
+          }
+        }
+      ],
+      "totals": {
+        "Ndot_J_per_K_s": 5.219321636416e+11,
+        "J_new_J_per_K": 1.6470926447336156e+19,
+        "W_exergy_max_W": 1.3309270172860802e+14,
+        "bits_per_s_landauer_erase": 5.452e+34,
+        "bits_per_year_landauer_erase": 1.721e+42,
+        "bits_per_s_entropy": 5.452e+34
+      },
+      "time_series": {
+        "dt_s": 3600,
+        "steps": 24,
+        "quadrature": "left_riemann",
+        "clamp_order": "sum_then_clamp",
+        "J_new_over_series_J_per_K": 3.909e+16,
+        "delta_vs_clean_summer": {
+          "Delta_J_new_J_per_K": 6.01e+15,
+          "Delta_bits": 6.28e+38
+        }
+      },
+      "validation": {
+        "power_conservation_scope": "not_declared"
+      },
+      "time_model": "time_series"
+    },
+    "Toy_NegBracket_demo": {
+      "P_input_W": null,
+      "carrier_legs": [
+        {
+          "leg_id": "L1-heat_bad",
+          "carrier": "heat",
+          "P_W": 100000.0,
+          "alpha": 1.0,
+          "T_source_K": 250.0,
+          "T_sink_K": 255.0,
+          "sink_label": "ambient_255K",
+          "eta_use": 0.0,
+          "Ndot_leg_J_per_K_s": -7.843137254901961,
+          "W_ex_leg_W": 0.0
+        },
+        {
+          "leg_id": "L2-work_small",
+          "carrier": "work",
+          "P_W": 3000.0,
+          "alpha": 0.0,
+          "T_source_K": null,
+          "T_sink_K": 255.0,
+          "sink_label": "ambient_255K",
+          "eta_use": 1.0,
+          "Ndot_leg_J_per_K_s": 11.764705882352942,
+          "W_ex_leg_W": 3000.0,
+          "time_series": {
+            "dt_s": 3600,
+            "P_W_series": [
+              3000,
+              3000,
+              3000,
+              3000,
+              3000,
+              3000,
+              3000,
+              3000,
+              3000,
+              3000,
+              3000,
+              1000,
+              1000,
+              3000,
+              3000,
+              3000,
+              3000,
+              3000,
+              3000,
+              3000,
+              3000,
+              3000,
+              3000
+            ]
+          }
+        }
+      ],
+      "totals": {
+        "Ndot_J_per_K_s": 3.921568627450981,
+        "J_new_J_per_K": 310600.0,
+        "W_exergy_max_W": 3000.0
+      },
+      "time_series": {
+        "dt_s": 3600,
+        "steps": 24,
+        "quadrature": "left_riemann",
+        "clamp_order": "sum_then_clamp",
+        "negative_raw_bracket_hits": true,
+        "negative_indices": [
+          11,
+          12
+        ],
+        "J_new_over_series_J_per_K": 310600.0
+      },
+      "validation": {
+        "power_conservation_scope": "not_declared"
+      },
+      "time_model": "time_series"
+    }
+  },
+  "black_holes": [
+    {
+      "label": "SgrA*_4e6Msun",
+      "carrier_legs": [
+        {
+          "leg_id": "L1",
+          "carrier": "radiation_bb",
+          "P_W": 5.6297586082658596e-42,
+          "alpha": 1.3333333333333333,
+          "T_source_K": 1.542518456202849e-14,
+          "T_sink_K": 2.725,
+          "sink_label": "space_2p725K",
+          "eta_use": 1.0,
+          "Ndot_leg_J_per_K_s": 0.0,
+          "W_ex_leg_W": 0.0
+        }
+      ],
+      "totals": {
+        "Ndot_J_per_K_s": 0.0,
+        "J_new_J_per_K": 0.0,
+        "W_exergy_max_W": 0.0
+      },
+      "diagnostics": {
+        "Ndot_raw_J_per_K_s": -4.87e-28,
+        "neg_bracket": true
+      },
+      "validation": {
+        "power_conservation_scope": "not_declared"
+      }
+    },
+    {
+      "label": "BH_10Msun",
+      "carrier_legs": [
+        {
+          "leg_id": "L1",
+          "carrier": "radiation_bb",
+          "P_W": 9.007613773225375e-31,
+          "alpha": 1.3333333333333333,
+          "T_source_K": 6.170073824811395e-09,
+          "T_sink_K": 2.725,
+          "sink_label": "space_2p725K",
+          "eta_use": 1.0,
+          "Ndot_leg_J_per_K_s": 0.0,
+          "W_ex_leg_W": 0.0
+        }
+      ],
+      "totals": {
+        "Ndot_J_per_K_s": 0.0,
+        "J_new_J_per_K": 0.0,
+        "W_exergy_max_W": 0.0
+      },
+      "diagnostics": {
+        "Ndot_raw_J_per_K_s": -1.95e-22,
+        "neg_bracket": true
+      },
+      "validation": {
+        "power_conservation_scope": "not_declared"
+      }
+    },
+    {
+      "label": "BH_Mcrit_TeqCMB",
+      "carrier_legs": [
+        {
+          "leg_id": "L1",
+          "carrier": "radiation_bb",
+          "P_W": 1.7569607061732376e-13,
+          "alpha": 1.3333333333333333,
+          "T_source_K": 2.725,
+          "T_sink_K": 2.725,
+          "sink_label": "space_2p725K",
+          "eta_use": 1.0,
+          "Ndot_leg_J_per_K_s": 0.0,
+          "W_ex_leg_W": 0.0
+        }
+      ],
+      "totals": {
+        "Ndot_J_per_K_s": 0.0,
+        "J_new_J_per_K": 0.0,
+        "W_exergy_max_W": 0.0
+      },
+      "diagnostics": {
+        "Ndot_raw_J_per_K_s": -2.15e-14,
+        "neg_bracket": true
+      },
+      "validation": {
+        "power_conservation_scope": "not_declared"
+      }
+    },
+    {
+      "label": "PBH_T3000K",
+      "carrier_legs": [
+        {
+          "leg_id": "L1",
+          "carrier": "radiation_bb",
+          "P_W": 2.1294700924917614e-07,
+          "alpha": 1.3333333333333333,
+          "T_source_K": 3000.0,
+          "T_sink_K": 2.725,
+          "sink_label": "space_2p725K",
+          "eta_use": 1.0,
+          "Ndot_leg_J_per_K_s": 7.805104835236571e-08,
+          "W_ex_leg_W": 2.127e-07
+        }
+      ],
+      "totals": {
+        "Ndot_J_per_K_s": 7.805104835236571e-08,
+        "J_new_J_per_K": 2.4630531864052836,
+        "W_exergy_max_W": 2.127e-07
+      },
+      "validation": {
+        "power_conservation_scope": "not_declared"
+      }
+    }
+  ]
+}
