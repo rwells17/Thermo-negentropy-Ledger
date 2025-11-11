@@ -1,0 +1,132 @@
+# unitproofs.md
+
+## Purpose
+
+Fast, reviewer-friendly checks that the accounting is consistent.  
+Equations are verified both analytically and via the JSON time-series and CSVs.
+
+### Core constants
+
+- T_sink = 255 K (biosphere)
+- dt = 3600 s
+- k_B ln 2 = 9.569914267e−24 J/K
+- bits_per_J_per_K = 1.0442737824274138e23
+
+---
+
+## Analytic equalities (verified)
+
+### 1. Work/chemical identity (ideal-bound, α = 0)
+
+For ideal work or chemical legs (α = 0, η_use = 1):
+
+- \( \dot{N} = P / T_{\text{sink}} \)
+- \( T_{\text{sink}} \dot{N} = P = W_{\text{ex}} \)
+
+If \( T_{\text{erase}} = T_{\text{sink}} \):
+
+\[
+\text{bits}_\text{entropy} = \frac{\dot{N}}{k_B \ln 2}
+= \frac{W_{\text{ex}}}{k_B T_{\text{erase}} \ln 2}
+= \text{bits}_\text{Landauer}
+\]
+
+**Shown by:**
+
+- `Biosphere_NPP_diurnal_eta0p01`
+- `Biosphere_NPP_winter_eta0p01`
+- `Biosphere_NPP_summer_eta0p01`
+- `Nuclear_Plant_PaloVerde_elec_only` electricity leg
+
+---
+
+### 2. Day-shape invariance (fixed daily energy)
+
+Define daily chemical energy:
+
+\[
+E_{\text{chem,day}} = \int_0^{\Delta t} P_{\text{chem}}(t)\,dt
+\]
+
+Daily negentropy:
+
+\[
+J_{\text{day}} = \int_0^{\Delta t} \frac{P_{\text{chem}}(t)}{T_{\text{sink}}}\,dt
+= \frac{E_{\text{chem,day}}}{T_{\text{sink}}}
+\]
+
+Thus, if \(E_{\text{chem,day}}\) is fixed, the daily \(J_{\text{new}}\) and associated bits are **independent of day shape**:
+
+- 12 h rectangle,
+- 9 h at 4/3 height,
+- 15 h at 0.8 height
+
+all yield identical daily \(J_{\text{new}}\) and bits.
+
+**Shown by:**
+
+- `Biosphere_NPP_diurnal_eta0p01`
+- `Biosphere_NPP_winter_eta0p01`
+- `Biosphere_NPP_summer_eta0p01`
+
+---
+
+### 3. Notch linearity (two-hour outage)
+
+With a plateau \(P_{\text{on}}\) for \(H_{\text{on}}\) hours, a 2 h notch reduces negentropy by:
+
+\[
+\Delta J = (\text{hours_removed} \times 3600) \times \frac{P_{\text{on}}}{T_{\text{sink}}}
+\]
+
+\[
+\Delta \text{bits} = \frac{\Delta J}{k_B \ln 2}
+\]
+
+This holds for:
+
+- 9 h winter day at 4/3 height,
+- 12 h baseline day,
+- 15 h summer day at 0.8 height.
+
+\(\Delta J\) scales with \(P_{\text{on}}\) (plateau height), not with capture efficiency per se.
+
+**Shown by:**
+
+- `Biosphere_NPP_winter_notch_eta0p01`
+- `Biosphere_NPP_summer_notch_eta0p01`
+- Analytic CSV from `notch-summary`
+
+---
+
+### Clamp sanity (negative bracket)
+
+The integration rule is **sum-then-clamp**:
+
+- Compute \( \dot{N}_{\text{raw}}(t) = \sum_i \dot{N}_i(t) \)
+- If \( \dot{N}_{\text{raw}}(t) < 0 \), contribution to \(J_{\text{new}}\) at that timestep is zero.
+
+**Shown by:**
+
+- `Toy_NegBracket_demo`  
+  - `negative_raw_bracket_hits = true`  
+  - `negative_indices = [11, 12]`  
+  Those timesteps contribute zero to `J_new_over_series_J_per_K`.
+
+---
+
+## Where to look (JSON IDs)
+
+- Clean day: `Biosphere_NPP_diurnal_eta0p01`
+- Day-shape variants: `Biosphere_NPP_winter_eta0p01`, `Biosphere_NPP_summer_eta0p01`
+- Notch variants: `Biosphere_NPP_winter_notch_eta0p01`, `Biosphere_NPP_summer_notch_eta0p01`
+- Clamp sanity: `Toy_NegBracket_demo`
+
+---
+
+## Recreate the notch-delta summary CSV
+
+You can use the CLI:
+
+```bash
+python3 tool.py data.json notch-summary --out notch_delta_summary.csv
